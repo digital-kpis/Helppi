@@ -1,0 +1,1985 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Reforço Helppi</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#0f172a; --surface:#1e293b; --surface2:#273347; --surface3:#2d3f55;
+  --border:#334155; --accent:#3b82f6; --accent2:#8b5cf6;
+  --success:#10b981; --warning:#f59e0b; --danger:#ef4444; --orange:#f97316;
+  --text:#f1f5f9; --text2:#94a3b8; --text3:#64748b;
+}
+body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+/* HEADER */
+header {
+  background:linear-gradient(135deg,#1e3a5f,#1e293b);
+  border-bottom:1px solid var(--border);
+  padding:14px 24px; display:flex; align-items:center; gap:14px;
+}
+.logo { width:40px;height:40px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0; }
+header h1 { font-size:18px;font-weight:700; }
+header p  { font-size:12px;color:var(--text2); }
+.hdr-right { margin-left:auto;display:flex;align-items:center;gap:10px; }
+#storageBar { font-size:11px;color:var(--text3); }
+
+/* UPLOAD AREA */
+.upload-area {
+  margin:20px 24px 0;
+  border:2px dashed var(--border);
+  border-radius:14px; padding:22px 28px;
+  display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+  background:rgba(59,130,246,.03);
+  position:relative; cursor:pointer; transition:all .2s;
+}
+.upload-area:hover { border-color:var(--accent); background:rgba(59,130,246,.06); }
+.upload-area.dragover { border-color:#60a5fa; background:rgba(59,130,246,.1); }
+.upload-area input[type=file] { position:absolute;inset:0;opacity:0;cursor:pointer;width:100%; }
+.ua-icon { font-size:32px; }
+.ua-text h3 { font-size:14px;font-weight:700;margin-bottom:3px; }
+.ua-text p  { font-size:12px;color:var(--text2); }
+.ua-date { display:flex;flex-direction:column;gap:4px;z-index:1; }
+.ua-date label { font-size:11px;color:var(--text2); }
+.ua-date input[type=date] {
+  background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;
+}
+.ua-date input[type=date]::-webkit-calendar-picker-indicator { filter:invert(.7); }
+
+/* HISTORY BAR */
+.history-bar { margin:12px 24px 0;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden; }
+.hb-hdr { padding:10px 16px;display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-bottom:1px solid var(--border); }
+.hb-hdr span { font-size:13px;font-weight:600; }
+.hb-actions { display:flex;gap:6px; }
+.hb-list { max-height:0;overflow:hidden;transition:max-height .3s; }
+.hb-list.open { max-height:360px;overflow-y:auto; }
+.hb-item { display:flex;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid var(--border);font-size:12px; }
+.hb-item:hover { background:rgba(255,255,255,.02); }
+.hb-dot { width:8px;height:8px;border-radius:50%;background:var(--success);flex-shrink:0; }
+.hb-date { font-weight:700;min-width:100px; }
+.hb-meta { color:var(--text2);flex:1; }
+.hb-file { color:var(--text3);font-size:11px;font-family:monospace; }
+.hb-del { background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:2px 6px;border-radius:4px; }
+.hb-del:hover { color:var(--danger);background:rgba(239,68,68,.1); }
+
+/* TABS */
+.tabs { margin:0 24px 0;display:flex;gap:4px;border-bottom:1px solid var(--border); }
+.tabs:first-of-type { margin-top:16px; }
+#tabsAlways { border-bottom: 1px solid var(--border); margin-top:16px; }
+#tabsBar    { border-bottom: 1px solid var(--border); margin-top:0; border-top:none; }
+.tab-btn {
+  padding:8px 16px;background:transparent;border:none;
+  border-bottom:2px solid transparent;color:var(--text2);
+  cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;border-radius:6px 6px 0 0;
+}
+.tab-btn:hover { color:var(--text);background:var(--surface); }
+.tab-btn.active { color:var(--accent);border-bottom-color:var(--accent); }
+
+.main { padding:20px 24px; }
+.panel { display:none; }
+.panel.active { display:block; }
+
+/* STATS */
+.stats-row { display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin-bottom:20px; }
+.stat-card { background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px; }
+.sc-label { color:var(--text2);font-size:11px;margin-bottom:5px; }
+.sc-value { font-size:24px;font-weight:700; }
+.sc-sub { color:var(--text3);font-size:10px;margin-top:2px; }
+.stat-card.blue   .sc-value { color:var(--accent); }
+.stat-card.green  .sc-value { color:var(--success); }
+.stat-card.purple .sc-value { color:var(--accent2); }
+.stat-card.yellow .sc-value { color:var(--warning); }
+.stat-card.orange .sc-value { color:var(--orange); }
+.stat-card.red    .sc-value { color:var(--danger); }
+
+/* FILTERS */
+.filters { display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end; }
+.filters label { font-size:11px;color:var(--text2);display:block;margin-bottom:3px; }
+.filters select,.filters input[type=text] {
+  background:var(--surface);border:1px solid var(--border);color:var(--text);
+  border-radius:8px;padding:7px 12px;font-size:13px;min-width:130px;
+}
+.filters select:focus,.filters input:focus { outline:2px solid var(--accent); }
+.search-wrap { position:relative; }
+.search-wrap input { padding-left:30px; }
+.search-wrap .si { position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px; }
+
+/* TABLE */
+.table-wrap { background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:auto; }
+table { width:100%;border-collapse:collapse;font-size:13px; }
+thead th { background:var(--surface2);padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap; }
+tbody tr { border-top:1px solid var(--border);transition:background .1s; }
+tbody tr:hover { background:rgba(255,255,255,.025); }
+td { padding:9px 14px;vertical-align:middle; }
+
+/* BADGES */
+.badge { display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600; }
+.badge-blue   { background:rgba(59,130,246,.15);color:#93c5fd; }
+.badge-green  { background:rgba(16,185,129,.15);color:#6ee7b7; }
+.badge-yellow { background:rgba(245,158,11,.15);color:#fcd34d; }
+.badge-purple { background:rgba(139,92,246,.15);color:#c4b5fd; }
+.badge-red    { background:rgba(239,68,68,.15);color:#fca5a5; }
+.badge-orange { background:rgba(249,115,22,.15);color:#fdba74; }
+.badge-gray   { background:rgba(100,116,139,.15);color:#94a3b8; }
+.text-dim { color:var(--text3);font-style:italic; }
+
+/* SOURCE LABELS */
+.src-daily  { font-size:10px;color:var(--success);margin-left:4px; }
+.src-fixed  { font-size:10px;color:var(--warning);margin-left:4px; }
+.src-empty  { font-size:10px;color:var(--danger);margin-left:4px; }
+
+/* LINK CARD — vínculo helppi↔colaborador */
+.link-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px; }
+.link-card {
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;
+  display:flex;align-items:center;gap:12px;
+}
+.link-card:hover { border-color:var(--accent); }
+.lc-avatar {
+  width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:15px;font-weight:700;color:white;flex-shrink:0;
+}
+.lc-uid { font-family:monospace;font-size:11px;color:var(--text3); }
+.lc-name { font-weight:700;font-size:13px;margin-bottom:2px; }
+.lc-days { display:flex;flex-wrap:wrap;gap:3px;margin-top:6px; }
+.lc-day-tag {
+  padding:2px 7px;border-radius:5px;font-size:10px;font-weight:600;border:1px solid;
+}
+.lc-day-daily  { background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:#6ee7b7; }
+.lc-day-fixed  { background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:#fcd34d; }
+.lc-fixed-badge { font-size:10px;padding:1px 7px;border-radius:10px;background:rgba(245,158,11,.15);color:#fcd34d;border:1px solid rgba(245,158,11,.3);margin-left:4px; }
+
+/* DAY GRID */
+.day-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px; }
+.day-card { background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden; }
+.day-card-hdr { background:var(--surface2);padding:11px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border); }
+.dc-date { font-weight:700;font-size:14px; }
+.dc-count { background:var(--accent);color:white;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600; }
+.day-card-body { padding:10px; }
+
+.user-row {
+  display:flex;align-items:center;gap:8px;
+  padding:5px 6px;border-radius:8px;margin-bottom:3px;
+  border:1px solid transparent;
+}
+.user-row:hover { background:var(--surface2);border-color:var(--border); }
+.ur-id { font-family:monospace;font-size:10px;color:var(--text3);min-width:72px; }
+.ur-name { font-size:12px;font-weight:600;flex:1; }
+.ur-src { font-size:9px;padding:1px 5px;border-radius:10px;font-weight:700; }
+.ur-src.daily { background:rgba(16,185,129,.15);color:#6ee7b7; }
+.ur-src.fixed { background:rgba(245,158,11,.15);color:#fcd34d; }
+.ur-src.empty { background:rgba(239,68,68,.1);color:#fca5a5; }
+
+/* LOAD TIMELINE */
+.lt-group-label { font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;padding-left:2px; }
+.lt-item { background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:10px; }
+.lt-hdr { padding:11px 16px;display:flex;align-items:center;gap:10px;cursor:pointer; }
+.lt-hdr:hover { background:rgba(255,255,255,.02); }
+.lt-dot { width:9px;height:9px;border-radius:50%;background:var(--success);flex-shrink:0; }
+.lt-title { font-weight:700;font-size:13px;flex:1; }
+.lt-meta { color:var(--text2);font-size:12px; }
+.lt-chevron { color:var(--text3);transition:transform .2s;font-size:12px; }
+.lt-chevron.open { transform:rotate(90deg); }
+.lt-body { border-top:1px solid var(--border);padding:12px;display:none; }
+.lt-body.open { display:block; }
+
+/* EMPTY */
+.empty-state { text-align:center;padding:50px 20px;color:var(--text2); }
+.es-icon { font-size:40px;margin-bottom:10px; }
+.empty-state h3 { font-size:15px;margin-bottom:5px;color:var(--text); }
+
+.section-title { font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px; }
+.section-title::after { content:'';flex:1;height:1px;background:var(--border); }
+
+/* BUTTONS */
+.btn { padding:6px 14px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s; }
+.btn-primary { background:var(--accent);color:white; }
+.btn-primary:hover { background:#2563eb; }
+.btn-danger { background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3); }
+.btn-danger:hover { background:rgba(239,68,68,.25); }
+.btn-outline { background:transparent;border:1px solid var(--border);color:var(--text2); }
+.btn-outline:hover { background:var(--surface2);color:var(--text); }
+.btn-sm { padding:4px 10px;font-size:11px; }
+.btn-save { background:var(--success);color:white;font-size:13px;padding:7px 16px;border-radius:8px;border:none;cursor:pointer;font-weight:700;animation:pulse-save 2s infinite; }
+.btn-save:hover { background:#059669;animation:none; }
+@keyframes pulse-save { 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.5)} 60%{box-shadow:0 0 0 8px rgba(16,185,129,0)} }
+
+/* PAGINATION */
+.pagination { display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:12px;color:var(--text2); }
+.pg-btns { display:flex;gap:4px; }
+.pg-btn { padding:4px 10px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;cursor:pointer;font-size:12px; }
+.pg-btn:hover { background:var(--surface2); }
+.pg-btn.active { background:var(--accent);border-color:var(--accent);color:white; }
+.pg-btn:disabled { opacity:.4;cursor:default; }
+
+/* LEGEND */
+.legend { display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;font-size:11px; }
+.leg-item { display:flex;align-items:center;gap:5px; }
+.leg-dot { width:8px;height:8px;border-radius:50%; }
+
+/* MODAL */
+.modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:none;align-items:center;justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal { background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:400px;width:90%; }
+.modal h3 { font-size:15px;margin-bottom:8px; }
+.modal p { font-size:13px;color:var(--text2);margin-bottom:20px;white-space:pre-line; }
+.modal-actions { display:flex;justify-content:flex-end;gap:8px; }
+
+/* TOAST */
+.toast { position:fixed;bottom:24px;right:24px;z-index:9999;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 18px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;transform:translateY(80px);opacity:0;transition:all .3s;pointer-events:none;box-shadow:0 8px 32px rgba(0,0,0,.4); }
+.toast.show { transform:translateY(0);opacity:1; }
+.toast.success { border-color:var(--success); }
+.toast.error   { border-color:var(--danger); }
+.toast.warning { border-color:var(--warning); }
+
+/* PROGRESS */
+.prog-wrap { background:var(--border);border-radius:4px;height:5px;flex:1; }
+.prog-bar  { height:5px;border-radius:4px;background:var(--accent); }
+
+/* MANUAL PANEL */
+.man-grid { grid-template-columns:340px 1fr; }
+@media(max-width:800px){ .man-grid { grid-template-columns:1fr; } }
+
+.man-row {
+  display:grid;
+  grid-template-columns:20px 120px 1fr 1fr 32px;
+  gap:6px;
+  align-items:center;
+  padding:5px 6px;
+  border-radius:8px;
+  background:var(--surface2);
+  border:1px solid transparent;
+  transition:border-color .15s;
+}
+.man-row:hover { border-color:var(--border); }
+.man-row.selected { border-color:var(--accent);background:rgba(59,130,246,.07); }
+.man-row input[type=checkbox] { accent-color:var(--accent);width:14px;height:14px;cursor:pointer; }
+.man-uid { font-family:monospace;font-size:11px;color:var(--text2);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px 8px; }
+.man-name-input {
+  width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);
+  border-radius:6px;padding:5px 8px;font-size:12px;
+}
+.man-name-input:focus { outline:1px solid var(--accent);border-color:var(--accent); }
+.man-name-input.filled { border-color:rgba(16,185,129,.5);background:rgba(16,185,129,.05); }
+.man-fixed { font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.man-del { background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px;border-radius:4px;line-height:1; }
+.man-del:hover { color:var(--danger);background:rgba(239,68,68,.1); }
+
+.known-item {
+  display:flex;align-items:center;gap:8px;padding:6px 8px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  font-size:12px;
+}
+.known-item:hover { border-color:var(--accent); }
+.known-id { font-family:monospace;color:var(--text3);font-size:11px;min-width:80px; }
+.known-name { flex:1;color:var(--text); }
+.known-del { background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:1px 4px;border-radius:3px; }
+.known-del:hover { color:var(--danger); }
+.gh-grid { grid-template-columns:1fr 1fr; }
+@media(max-width:700px){ .gh-grid { grid-template-columns:1fr; } }
+
+.gh-step { display:flex;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border); }
+.gh-step:last-child { border-bottom:none;margin-bottom:0;padding-bottom:0; }
+.gh-step-num { width:26px;height:26px;border-radius:50%;background:var(--accent);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px; }
+.gh-step-title { font-weight:700;font-size:13px;margin-bottom:4px; }
+.gh-step-desc { font-size:12px;color:var(--text2);line-height:1.6; }
+.gh-step-desc code { background:var(--surface2);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:11px;color:#93c5fd; }
+.gh-btn-step { display:inline-block;margin-top:8px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#93c5fd;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer; }
+.gh-btn-step:hover { background:rgba(59,130,246,.25); }
+.gh-link { color:var(--accent);text-decoration:none; }
+.gh-link:hover { text-decoration:underline; }
+.gh-label { display:block;font-size:11px;color:var(--text2);margin-bottom:4px; }
+.gh-input { width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:13px; }
+.gh-input:focus { outline:2px solid var(--accent); }
+.gh-spin { display:inline-block;animation:spin .8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">📋</div>
+  <div>
+    <h1>Dashboard Reforço Helppi</h1>
+    <p>Vínculo usuário ↔ colaborador por dia</p>
+  </div>
+  <div class="hdr-right">
+    <span id="storageBar"></span>
+    <button class="btn btn-save" id="btnSave" onclick="saveToFile()" style="display:none">
+      💾 Salvar arquivo
+    </button>
+    <button class="btn btn-danger btn-sm" onclick="confirmClearAll()">🗑 Limpar tudo</button>
+  </div>
+</header>
+
+<!-- FAIXA DE AVISO DE SALVAR -->
+<div id="saveNotice" style="display:none;background:#1c3a2a;border-bottom:2px solid var(--success);padding:10px 24px;align-items:center;gap:12px;font-size:13px;">
+  <span style="color:var(--success);font-size:18px">💾</span>
+  <span style="color:#6ee7b7;font-weight:600">Dados carregados! Clique em <strong>"Salvar arquivo"</strong> no canto superior direito para gravar os dados permanentemente no arquivo HTML.</span>
+  <button onclick="saveToFile()" style="margin-left:auto;background:var(--success);color:white;border:none;padding:7px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">💾 Salvar agora</button>
+  <button onclick="document.getElementById('saveNotice').style.display='none'" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0 4px">×</button>
+</div>
+
+<!-- UPLOAD -->
+<div class="upload-area" id="uploadZone">
+  <input type="file" id="fileInput" accept=".xlsx,.xls">
+  <div class="ua-icon">📂</div>
+  <div class="ua-text">
+    <h3>Carregar planilha do dia</h3>
+    <p>O sistema lê a aba <strong>USUARIOS</strong> (vínculo fixo) e as abas diárias <strong>DD-MM</strong> (quem usou cada login). Os dados ficam salvos automaticamente.</p>
+  </div>
+  <div class="ua-date" onclick="event.stopPropagation()">
+    <label>Data do carregamento</label>
+    <input type="date" id="loadDate">
+  </div>
+</div>
+
+<!-- HISTORY BAR -->
+<div class="history-bar" id="historyBar" style="display:none">
+  <div class="hb-hdr" onclick="toggleHbList()">
+    <span>📂 Histórico — <span id="loadCount">0</span> carregamento(s)</span>
+    <div class="hb-actions" onclick="event.stopPropagation()">
+      <button class="btn btn-outline btn-sm" onclick="exportBackup()">⬇ Backup JSON</button>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('importInput').click()">⬆ Restaurar</button>
+      <input type="file" id="importInput" accept=".json" style="display:none" onchange="doImport(event)">
+    </div>
+  </div>
+  <div class="hb-list" id="hbList"></div>
+</div>
+
+
+<!-- TABS SEMPRE VISÍVEIS (não dependem de dados) -->
+<div class="tabs" id="tabsAlways" style="display:flex">
+  <button class="tab-btn" onclick="switchTab('manual')" id="tbManual" style="color:#10b981">✏️ Lançamento Manual</button>
+  <button class="tab-btn" onclick="switchTab('github')" id="tbGithub" style="color:#f59e0b">🐙 GitHub / Link</button>
+  <div style="flex:1"></div>
+  <span id="tabsNoDataHint" style="font-size:12px;color:var(--text3);align-self:center;padding-right:12px">
+    ← Carregue um arquivo ou faça um lançamento manual para ver os dados
+  </span>
+</div>
+
+<!-- TABS COM DADOS (só aparecem após primeiro carregamento) -->
+<div class="tabs" id="tabsBar" style="display:none;border-top:1px solid var(--border)">
+  <button class="tab-btn active" onclick="switchTab('visao-geral')">📊 Visão Geral</button>
+  <button class="tab-btn"        onclick="switchTab('vinculos')">🔗 Vínculos</button>
+  <button class="tab-btn"        onclick="switchTab('por-dia')">📅 Por Dia</button>
+  <button class="tab-btn"        onclick="switchTab('por-usuario')">👤 Por Colaborador</button>
+  <button class="tab-btn"        onclick="switchTab('carregamentos')">📂 Carregamentos</button>
+  <button class="tab-btn"        onclick="switchTab('tabela')">📋 Tabela</button>
+</div>
+
+<div class="main" id="mainContent" style="display:none">
+
+  <!-- VISÃO GERAL -->
+  <div class="panel active" id="panel-visao-geral">
+    <div class="stats-row" id="statsRow"></div>
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:var(--success)"></div> Nome preenchido na aba do dia</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--warning)"></div> Sem nome no dia — usando vínculo fixo da aba USUARIOS</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--danger)"></div> Sem nome em nenhuma fonte</div>
+    </div>
+    <div class="section-title">📅 Resumo por Data</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Data Trabalho</th><th>Usuários</th><th>Preenchimento</th><th>✅ Diário</th><th>⚠️ Fixo</th><th>❌ Vazio</th><th>Carregado em</th></tr></thead>
+        <tbody id="summaryBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- VÍNCULOS -->
+  <div class="panel" id="panel-vinculos">
+    <div class="filters">
+      <div class="search-wrap">
+        <span class="si">🔍</span>
+        <input type="text" id="vincSearch" placeholder="Buscar helppi ou nome..." oninput="renderVinculos()">
+      </div>
+      <div>
+        <label>Filtrar por fonte</label>
+        <select id="vincSource" onchange="renderVinculos()">
+          <option value="">Todas</option>
+          <option value="daily">✅ Com uso diário</option>
+          <option value="fixed">⚠️ Apenas vínculo fixo</option>
+          <option value="empty">❌ Sem vínculo</option>
+        </select>
+      </div>
+    </div>
+    <div class="link-grid" id="vincGrid"></div>
+  </div>
+
+  <!-- POR DIA -->
+  <div class="panel" id="panel-por-dia">
+    <div class="filters">
+      <div>
+        <label>Data de trabalho</label>
+        <select id="dayFilter" onchange="renderDayView()"><option value="">Todos os dias</option></select>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:var(--success)"></div> Nome do dia</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--warning)"></div> Vínculo fixo</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--danger)"></div> Sem nome</div>
+    </div>
+    <div class="day-grid" id="dayGrid"></div>
+  </div>
+
+  <!-- POR COLABORADOR -->
+  <div class="panel" id="panel-por-usuario">
+    <div class="filters">
+      <div class="search-wrap">
+        <span class="si">🔍</span>
+        <input type="text" id="userSearch" placeholder="Buscar nome ou usuário..." oninput="renderUserView()">
+      </div>
+    </div>
+    <div class="link-grid" id="userGrid"></div>
+  </div>
+
+  <!-- CARREGAMENTOS -->
+  <div class="panel" id="panel-carregamentos">
+    <div id="loadTimeline"></div>
+  </div>
+
+  <!-- TABELA -->
+  <div class="panel" id="panel-tabela">
+    <div class="filters">
+      <div>
+        <label>Data trabalho</label>
+        <select id="tableDay" onchange="renderTable()"><option value="">Todas</option></select>
+      </div>
+      <div>
+        <label>Fonte do nome</label>
+        <select id="tableSrc" onchange="renderTable()">
+          <option value="">Todas</option>
+          <option value="daily">✅ Diário</option>
+          <option value="fixed">⚠️ Fixo</option>
+          <option value="empty">❌ Vazio</option>
+        </select>
+      </div>
+      <div class="search-wrap">
+        <span class="si">🔍</span>
+        <input type="text" id="tableSearch" placeholder="Buscar..." oninput="renderTable()">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Data</th><th>Usuário Helppi</th><th>Colaborador (dia)</th><th>Vínculo Fixo</th><th>Fonte</th><th>Carregado em</th></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+  <!-- ══ LANÇAMENTO MANUAL ══ -->
+  <div class="panel" id="panel-manual">
+
+    <div style="display:grid;grid-template-columns:340px 1fr;gap:20px" class="man-grid">
+
+      <!-- COLUNA ESQUERDA: configurar data + usuários helppi -->
+      <div>
+        <!-- Data e nome do lançamento -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:14px">📅 Configurar dia</div>
+
+          <div style="margin-bottom:12px">
+            <label class="gh-label">Data de trabalho</label>
+            <input type="date" id="manDate" class="gh-input" oninput="manDateChanged()">
+          </div>
+
+          <div style="margin-bottom:12px">
+            <label class="gh-label">Nome do arquivo / referência</label>
+            <input type="text" id="manFileName" class="gh-input" placeholder="ex: lançamento-manual, plantão-extra...">
+          </div>
+
+          <div id="manDateInfo" style="font-size:12px;color:var(--text3);margin-bottom:12px;display:none">
+            ⚠️ Já existe um lançamento para esta data. Os dados serão <strong style="color:var(--warning)">mesclados</strong>.
+          </div>
+
+          <button class="btn btn-primary" style="width:100%" onclick="addManualUsers()">
+            ➕ Adicionar usuários helppi para esta data
+          </button>
+        </div>
+
+        <!-- Gestão de usuários helppi conhecidos -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">🔑 Base de usuários helppi</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Usuários cadastrados — usados como sugestão nos lançamentos</div>
+
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <input type="text" id="newHelppiId"   class="gh-input" placeholder="helppiXX" style="flex:1" onkeydown="if(event.key==='Enter')addKnownUser()">
+            <input type="text" id="newHelppiName" class="gh-input" placeholder="Nome fixo (opcional)" style="flex:1" onkeydown="if(event.key==='Enter')addKnownUser()">
+            <button class="btn btn-primary btn-sm" onclick="addKnownUser()" style="white-space:nowrap">+ Add</button>
+          </div>
+
+          <div id="knownUsersList" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:4px">
+            <div style="color:var(--text3);font-size:12px;text-align:center;padding:16px">
+              Carregue um arquivo Excel ou adicione manualmente acima
+            </div>
+          </div>
+
+          <div style="margin-top:10px;display:flex;gap:6px">
+            <button class="btn btn-outline btn-sm" onclick="selectAllKnown()" style="flex:1">✅ Todos</button>
+            <button class="btn btn-outline btn-sm" onclick="selectNoneKnown()" style="flex:1">⬜ Nenhum</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- COLUNA DIREITA: formulário de vínculos do dia -->
+      <div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;min-height:400px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div>
+              <div style="font-size:14px;font-weight:700" id="manFormTitle">✏️ Lançamento do dia</div>
+              <div style="font-size:12px;color:var(--text2);margin-top:2px" id="manFormSubtitle">Configure a data e clique em "Adicionar usuários helppi"</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-outline btn-sm" onclick="addManRow()" id="btnAddRow" style="display:none">+ Linha</button>
+              <button class="btn btn-primary" onclick="saveManual()" id="btnSaveManual" style="display:none">💾 Salvar lançamento</button>
+            </div>
+          </div>
+
+          <!-- Barra de busca de colaborador para preenchimento rápido -->
+          <div id="manQuickFill" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px">
+            <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px">⚡ Preenchimento rápido — aplicar mesmo colaborador a vários usuários</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input type="text" id="quickFillName" class="gh-input" placeholder="Nome do colaborador..." style="flex:1;min-width:160px" list="collabSuggestions">
+              <datalist id="collabSuggestions"></datalist>
+              <button class="btn btn-outline btn-sm" onclick="applyQuickFill('selected')">Aplicar aos selecionados</button>
+              <button class="btn btn-outline btn-sm" onclick="applyQuickFill('empty')">Aplicar aos vazios</button>
+              <button class="btn btn-outline btn-sm" onclick="applyQuickFill('all')">Aplicar a todos</button>
+            </div>
+          </div>
+
+          <!-- Tabela de vínculos -->
+          <div id="manTableWrap" style="display:none">
+            <div style="display:grid;grid-template-columns:20px 120px 1fr 1fr 32px;gap:6px;padding:6px 8px;background:var(--surface2);border-radius:8px 8px 0 0;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">
+              <span></span>
+              <span>Usuário</span>
+              <span>Colaborador do dia</span>
+              <span>Vínculo fixo</span>
+              <span></span>
+            </div>
+            <div id="manRows" style="display:flex;flex-direction:column;gap:2px;max-height:480px;overflow-y:auto"></div>
+          </div>
+
+          <!-- Estado vazio -->
+          <div id="manEmptyState" style="text-align:center;padding:50px 20px;color:var(--text2)">
+            <div style="font-size:36px;margin-bottom:10px">📝</div>
+            <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">Nenhum lançamento em edição</div>
+            <div style="font-size:12px">Selecione a data e clique em <strong>"Adicionar usuários helppi"</strong><br>ou adicione linhas manualmente com <strong>"+ Linha"</strong></div>
+          </div>
+        </div>
+
+        <!-- Lançamentos manuais salvos -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-top:16px" id="manSavedBox" style="display:none">
+          <div style="font-size:14px;font-weight:700;margin-bottom:12px">📂 Lançamentos manuais salvos</div>
+          <div id="manSavedList" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /panel-manual -->
+
+  <!-- ══ GITHUB / LINK ══ -->
+  <div class="panel" id="panel-github">
+
+    <!-- STATUS BAR -->
+    <div id="ghStatusBar" style="display:none;margin-bottom:18px;padding:12px 18px;border-radius:12px;border:1px solid;display:none;align-items:center;gap:10px;font-size:13px"></div>
+
+    <!-- CONFIGURAÇÃO -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px" class="gh-grid">
+
+      <!-- PASSO A PASSO -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px">
+        <div style="font-size:15px;font-weight:700;margin-bottom:16px">🐙 Passo a passo — criar link de acesso</div>
+
+        <div class="gh-step" id="step1">
+          <div class="gh-step-num">1</div>
+          <div class="gh-step-body">
+            <div class="gh-step-title">Criar conta no GitHub</div>
+            <div class="gh-step-desc">Acesse <a href="https://github.com/signup" target="_blank" class="gh-link">github.com/signup</a> e crie uma conta gratuita. Se já tiver, pule este passo.</div>
+            <a href="https://github.com/signup" target="_blank" class="gh-btn-step">Criar conta →</a>
+          </div>
+        </div>
+
+        <div class="gh-step" id="step2">
+          <div class="gh-step-num">2</div>
+          <div class="gh-step-body">
+            <div class="gh-step-title">Criar repositório público</div>
+            <div class="gh-step-desc">Clique no link abaixo, preencha o nome do repositório (ex: <code>helppi-dashboard</code>), marque <strong>Public</strong> e clique em <em>Create repository</em>.</div>
+            <a href="https://github.com/new" target="_blank" class="gh-btn-step">Criar repositório →</a>
+          </div>
+        </div>
+
+        <div class="gh-step" id="step3">
+          <div class="gh-step-num">3</div>
+          <div class="gh-step-body">
+            <div class="gh-step-title">Gerar Token de Acesso</div>
+            <div class="gh-step-desc">Acesse <a href="https://github.com/settings/tokens/new" target="_blank" class="gh-link">Settings → Tokens</a>. Em <em>Note</em> escreva <code>helppi</code>, em <em>Expiration</em> escolha <strong>No expiration</strong>, marque o escopo <strong>repo</strong> e clique em <em>Generate token</em>. <strong>Copie o token gerado</strong> (ele só aparece uma vez).</div>
+            <a href="https://github.com/settings/tokens/new?description=helppi&scopes=repo" target="_blank" class="gh-btn-step">Gerar token →</a>
+          </div>
+        </div>
+
+        <div class="gh-step" id="step4">
+          <div class="gh-step-num">4</div>
+          <div class="gh-step-body">
+            <div class="gh-step-title">Ativar GitHub Pages</div>
+            <div class="gh-step-desc">No repositório criado, vá em <strong>Settings → Pages</strong>, em <em>Branch</em> selecione <strong>main</strong> e clique em <em>Save</em>. Aguarde ~1 minuto e seu link estará disponível como:<br><code>https://SEU-USUARIO.github.io/helppi-dashboard/</code></div>
+            <div style="font-size:11px;color:var(--text3);margin-top:6px">💡 Qualquer pessoa com o link poderá visualizar o dashboard sem precisar de conta.</div>
+          </div>
+        </div>
+
+        <div class="gh-step" id="step5">
+          <div class="gh-step-num">5</div>
+          <div class="gh-step-body">
+            <div class="gh-step-title">Preencher configurações ao lado →</div>
+            <div class="gh-step-desc">Cole seu usuário, nome do repositório e token no painel ao lado. Clique em <strong>Testar conexão</strong> para validar e depois em <strong>Publicar dashboard</strong>.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAINEL DE CONFIGURAÇÃO -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px">
+        <div style="font-size:15px;font-weight:700;margin-bottom:4px">⚙️ Configuração</div>
+
+        <div>
+          <label class="gh-label">Usuário GitHub</label>
+          <input class="gh-input" id="ghUser" placeholder="ex: digital-kpis" oninput="saveGhConfig()">
+        </div>
+        <div>
+          <label class="gh-label">Nome do repositório</label>
+          <input class="gh-input" id="ghRepo" placeholder="ex: helppi-dashboard" oninput="saveGhConfig()">
+        </div>
+        <div>
+          <label class="gh-label">Token de acesso <span style="color:var(--text3);font-size:10px">(guardado só no seu navegador)</span></label>
+          <div style="position:relative">
+            <input class="gh-input" id="ghToken" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" oninput="saveGhConfig()" style="padding-right:36px">
+            <button onclick="toggleTokenVis()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px" id="tokenEye">👁</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-outline" onclick="testGhConnection()" id="btnTest">🔌 Testar conexão</button>
+          <button class="btn btn-primary" onclick="publishToGh()" id="btnPublish">🚀 Publicar dashboard</button>
+        </div>
+
+        <div id="ghConnStatus" style="font-size:12px;color:var(--text3)">Preencha os campos acima para começar.</div>
+
+        <!-- LINK GERADO -->
+        <div id="ghLinkBox" style="display:none;background:var(--surface2);border:1px solid var(--success);border-radius:10px;padding:14px">
+          <div style="font-size:11px;color:var(--success);font-weight:700;margin-bottom:6px">✅ SEU LINK DE ACESSO</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <a id="ghLinkUrl" href="#" target="_blank" style="color:#93c5fd;font-size:13px;word-break:break-all;flex:1"></a>
+            <button onclick="copyLink()" style="background:var(--surface3,#2d3f55);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap">📋 Copiar</button>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:8px">Qualquer pessoa com este link pode acessar o dashboard com todos os dados — sem precisar de conta.</div>
+        </div>
+
+        <!-- HISTÓRICO DE PUBLICAÇÕES -->
+        <div id="ghPubHistory" style="display:none">
+          <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px">📜 Publicações anteriores</div>
+          <div id="ghPubList" style="font-size:11px;color:var(--text3);display:flex;flex-direction:column;gap:4px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INSTRUÇÕES ADICIONAIS -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px">💡 Como funciona o link</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;font-size:12px;color:var(--text2)">
+        <div style="display:flex;gap:10px"><span style="font-size:20px">🔗</span><div><strong style="color:var(--text);display:block;margin-bottom:3px">Link permanente</strong>O endereço não muda. Compartilhe uma vez e funciona sempre.</div></div>
+        <div style="display:flex;gap:10px"><span style="font-size:20px">🔄</span><div><strong style="color:var(--text);display:block;margin-bottom:3px">Atualização automática</strong>Ao publicar novos dados, o link já mostra a versão mais recente em até 1 minuto.</div></div>
+        <div style="display:flex;gap:10px"><span style="font-size:20px">👥</span><div><strong style="color:var(--text);display:block;margin-bottom:3px">Acesso sem conta</strong>Qualquer pessoa com o link visualiza o dashboard — não precisa ter GitHub.</div></div>
+        <div style="display:flex;gap:10px"><span style="font-size:20px">🔒</span><div><strong style="color:var(--text);display:block;margin-bottom:3px">Token seguro</strong>O token fica só no seu navegador (localStorage). O link publicado não expõe o token.</div></div>
+        <div style="display:flex;gap:10px"><span style="font-size:20px">📦</span><div><strong style="color:var(--text);display:block;margin-bottom:3px">Backup automático</strong>Cada publicação salva uma versão no GitHub. Histórico completo preservado.</div></div>
+        <div style="display:flex;gap:10px"><span style="font-size:20px">💸</span><div><strong style="color:var(--text);display:block;margin-bottom:3px">100% gratuito</strong>GitHub Pages é grátis para repositórios públicos. Sem limite de acessos.</div></div>
+      </div>
+    </div>
+
+  </div><!-- /panel-github -->
+</div><!-- /main -->
+
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal">
+    <h3 id="modalTitle">Confirmar</h3>
+    <p id="modalMsg"></p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-danger" id="modalConfirmBtn">Confirmar</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- ██ DADOS EMBUTIDOS — não editar manualmente ██ -->
+<script id="embedded-data" type="application/json">
+{"loads":[],"fixedMap":{}}
+</script>
+
+<script>
+// ══════════════════════════════════════════════
+//  CONSTANTS & STATE
+// ══════════════════════════════════════════════
+// Os dados ficam embutidos no próprio arquivo HTML.
+// Ao salvar, o arquivo é regravado com os dados atualizados dentro.
+
+// loads[]:  { id, workDate(DD-MM), loadedAt(ISO), loadedAtFmt, fileName, records[{userId,dailyName,fixedName}] }
+// fixedMap: { helppiXX → nome } from aba USUARIOS
+let loads   = [];
+let fixedMap = {};
+let allData  = [];
+let workDays = [];
+let tablePage = 0;
+const PAGE = 50;
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('loadDate').value = todayISO();
+  loadEmbedded();
+  setupUpload();
+  // Ativa aba Manual por padrão (sempre visível, sem necessidade de dados)
+  if (!loads.length) switchTab('manual');
+});
+
+function todayISO() {
+  return new Date().toISOString().slice(0,10);
+}
+
+// ══════════════════════════════════════════════
+//  PERSISTÊNCIA — dados embutidos no próprio HTML
+//
+//  Como funciona:
+//  1. Ao abrir o arquivo, os dados são lidos do bloco
+//     <script id="embedded-data"> que está dentro do HTML.
+//  2. Ao salvar, o JavaScript lê o HTML atual do documento,
+//     substitui o conteúdo desse bloco pelos dados atualizados
+//     e oferece o arquivo para download, substituindo o original.
+//  3. O usuário substitui o arquivo antigo pelo novo salvo.
+//     Os dados ficam dentro do arquivo — nunca dependem de
+//     localStorage, cookies ou servidor.
+// ══════════════════════════════════════════════
+
+function loadEmbedded() {
+  try {
+    const tag = document.getElementById('embedded-data');
+    if (tag) {
+      const raw = tag.textContent.trim();
+      if (raw && raw !== '{}' && raw !== '{"loads":[],"fixedMap":{}}') {
+        const parsed = JSON.parse(raw);
+        loads    = parsed.loads    || [];
+        fixedMap = parsed.fixedMap || {};
+      }
+    }
+  } catch(e) { loads=[]; fixedMap={}; }
+  rebuildAllData();
+  if (loads.length) showDashboard();
+  updateStorageBar();
+}
+
+// ── SALVAR: regrava o próprio HTML com os dados embutidos ──────
+// O usuário baixa o arquivo atualizado e substitui o original.
+// Os dados viajam DENTRO do arquivo — zero dependência de servidor.
+function saveToFile() {
+  const payload = JSON.stringify({ loads, fixedMap });
+
+  // Obtém o HTML serializado e atualiza o bloco embedded-data
+  const html = document.documentElement.outerHTML;
+  const updated = html.replace(
+    /(<script\s+id="embedded-data"[^>]*>)([\s\S]*?)(<\/script>)/,
+    (_, open, _content, close) => `${open}\n${payload}\n${close}`
+  );
+
+  // Força download do arquivo com nome fixo (fácil de substituir)
+  const blob = new Blob([updated], { type: 'text/html;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'dashboard-helppi.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+
+  // Esconde o aviso de salvar
+  document.getElementById('saveNotice').style.display = 'none';
+  document.getElementById('btnSave').style.display = 'none';
+  document.getElementById('btnSave').style.animation = 'none';
+
+  updateStorageBar();
+  showToast('✅ Arquivo baixado! Substitua o arquivo antigo pelo novo para manter os dados.', 'success');
+}
+
+function updateStorageBar() {
+  try {
+    const payload = JSON.stringify({ loads, fixedMap });
+    const kb = Math.round(payload.length * 2 / 1024);
+    document.getElementById('storageBar').textContent = loads.length
+      ? `💾 ${kb} KB · ${loads.length} carga(s)`
+      : '';
+  } catch(e) {}
+}
+
+function rebuildAllData() {
+  allData = [];
+  loads.forEach(load => {
+    load.records.forEach(r => {
+      // dailyName = nome preenchido no dia; fixedName = vínculo da aba USUARIOS
+      const dailyName = (r.dailyName||'').trim();
+      const fixedName = (r.fixedName||(fixedMap[r.userId])||'').trim();
+      let resolvedName, source;
+      if (dailyName) { resolvedName = dailyName; source = 'daily'; }
+      else if (fixedName) { resolvedName = fixedName; source = 'fixed'; }
+      else { resolvedName = ''; source = 'empty'; }
+      allData.push({
+        workDate: load.workDate,
+        userId: r.userId,
+        dailyName,
+        fixedName,
+        resolvedName,
+        source,
+        loadedAt: load.loadedAt,
+        loadedAtFmt: load.loadedAtFmt,
+        loadId: load.id
+      });
+    });
+  });
+  const s = new Set(allData.map(d=>d.workDate));
+  workDays = [...s].sort(cmpDates);
+}
+
+// ══════════════════════════════════════════════
+//  UPLOAD
+// ══════════════════════════════════════════════
+function setupUpload() {
+  const zone = document.getElementById('uploadZone');
+  const inp  = document.getElementById('fileInput');
+  zone.addEventListener('dragover', e=>{e.preventDefault();zone.classList.add('dragover');});
+  zone.addEventListener('dragleave', ()=>zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e=>{e.preventDefault();zone.classList.remove('dragover');if(e.dataTransfer.files[0])processFile(e.dataTransfer.files[0]);});
+  inp.addEventListener('change', e=>{if(e.target.files[0])processFile(e.target.files[0]);inp.value='';});
+}
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try { const wb = XLSX.read(e.target.result,{type:'array'}); importWB(wb, file.name); }
+    catch(err) { showToast('❌ Erro: '+err.message,'error'); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function importWB(wb, fileName) {
+  const DATE_RE = /^\d{2}-\d{2}$/;
+
+  // ── Helpers ──────────────────────────────────────────────────
+  // Retorna true se o valor é um ID helppi válido
+  function isHelppiId(v) { return /helppi\d+/i.test(String(v||'')); }
+
+  // Retorna true se o valor parece ser um nome de colaborador
+  // (não é vazio, não é senha com @, não é outro ID helppi, não é número puro)
+  function isCollabName(v) {
+    const s = String(v||'').trim();
+    if (!s) return false;
+    if (s.includes('@')) return false;           // senha tipo Maracana@2025
+    if (isHelppiId(s)) return false;            // outro ID helppi
+    if (/^\d+$/.test(s)) return false;          // número puro (ex: datas serializadas)
+    if (s.length < 2) return false;             // caractere isolado
+    return true;
+  }
+
+  // Para cada linha, varre todas as colunas e vincula:
+  // coluna com ID helppi → coluna de nome mais próxima à direita que seja nome válido
+  // Pula colunas intermediárias que não sejam nome (ex: senha, horário)
+  function extractPairs(rows) {
+    const pairs = []; // [{uid, nameColIdx}]
+
+    // 1. Descobrir quais colunas têm IDs helppi (usando as primeiras linhas de dados)
+    const dataRows = rows.filter(r => r.some(c => isHelppiId(c)));
+    if (!dataRows.length) return [];
+
+    // Detectar automaticamente os grupos: coluna do ID → coluna do nome
+    // Estratégia: para cada coluna que tenha helppi ID, procura a próxima coluna
+    // que contenha nomes (não senha, não helppi, não vazio) na maioria das linhas
+    const maxCol = Math.max(...dataRows.map(r => r.length));
+    const idCols = [];
+    for (let c = 0; c < maxCol; c++) {
+      const helppiCount = dataRows.filter(r => isHelppiId(r[c])).length;
+      if (helppiCount >= dataRows.length * 0.3) idCols.push(c); // coluna tem helppi em ≥30% das linhas
+    }
+
+    // Para cada coluna de ID, achar a coluna de nome correspondente
+    const idToNameCol = {};
+    idCols.forEach(idCol => {
+      // Procura nas colunas à direita qual tem mais nomes válidos
+      let bestCol = -1, bestScore = 0;
+      for (let nc = idCol + 1; nc < Math.min(idCol + 5, maxCol); nc++) {
+        // Pular colunas de senha (maioria dos valores contém @)
+        const atCount = dataRows.filter(r => String(r[nc]||'').includes('@')).length;
+        if (atCount > dataRows.length * 0.3) continue; // é coluna de senha
+        const nameScore = dataRows.filter(r => isCollabName(r[nc])).length;
+        if (nameScore > bestScore) { bestScore = nameScore; bestCol = nc; }
+      }
+      if (bestCol >= 0) idToNameCol[idCol] = bestCol;
+    });
+
+    // Extrair pares de todas as linhas de dados
+    rows.forEach(row => {
+      Object.entries(idToNameCol).forEach(([idCol, nameCol]) => {
+        const uid  = String(row[idCol]||'').trim();
+        const nome = String(row[nameCol]||'').trim();
+        if (isHelppiId(uid)) {
+          pairs.push({ uid: norm(uid), name: isCollabName(nome) ? nome : '' });
+        }
+      });
+    });
+
+    return pairs;
+  }
+
+  // ── 1. Parse aba USUARIOS → fixedMap ────────────────────────
+  const usuSheet = wb.SheetNames.find(n => n.toUpperCase()==='USUARIOS');
+  let newFixed = {};
+  if (usuSheet) {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[usuSheet],{header:1,defval:''});
+    extractPairs(rows.slice(1)).forEach(({uid, name}) => {
+      if (name) newFixed[uid] = name;
+    });
+    Object.assign(fixedMap, newFixed);
+  }
+
+  // ── 2. Parse abas diárias DD-MM ─────────────────────────────
+  const dateSheets = wb.SheetNames.filter(n=>DATE_RE.test(n));
+  if (!dateSheets.length) { showToast('⚠️ Nenhuma aba DD-MM encontrada.','warning'); return; }
+
+  const dateVal     = document.getElementById('loadDate').value || todayISO();
+  const now         = new Date();
+  const loadedAt    = new Date(`${dateVal}T${now.toTimeString().slice(0,8)}`).toISOString();
+  const loadedAtFmt = fmtDT(loadedAt);
+  let totalRec      = 0;
+
+  dateSheets.forEach(sheet => {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheet],{header:1,defval:''});
+    const records = [];
+
+    extractPairs(rows.slice(1)).forEach(({uid, name}) => {
+      records.push({
+        userId:    uid,
+        dailyName: name,
+        fixedName: fixedMap[uid] || ''
+      });
+    });
+
+    if (!records.length) return;
+
+    const idx   = loads.findIndex(l=>l.workDate===sheet && l.fileName===fileName);
+    const entry = { id: idx>=0?loads[idx].id:genId(), workDate:sheet, loadedAt, loadedAtFmt, fileName, records };
+    if (idx>=0) loads[idx]=entry; else loads.push(entry);
+    totalRec += records.length;
+  });
+
+  if (!totalRec) { showToast('⚠️ Nenhum registro encontrado.','warning'); return; }
+
+  loads.sort((a,b)=>cmpDates(a.workDate,b.workDate)||new Date(a.loadedAt)-new Date(b.loadedAt));
+  rebuildAllData();
+  showDashboard();
+  renderAll();
+  showSavePrompt();
+  const fixedCount = Object.keys(newFixed).length;
+  showToast(`✅ ${totalRec} registros · ${fixedCount} vínculos fixos · ${dateSheets.length} dia(s)`,'success');
+}
+
+// ── AVISO DE SALVAR ────────────────────────────────────────────
+function showSavePrompt() {
+  document.getElementById('saveNotice').style.display = 'flex';
+  document.getElementById('btnSave').style.display    = 'inline-block';
+}
+
+// ══════════════════════════════════════════════
+//  SHOW DASHBOARD
+// ══════════════════════════════════════════════
+function showDashboard() {
+  document.getElementById('historyBar').style.display = 'block';
+  document.getElementById('tabsBar').style.display    = 'flex';
+  document.getElementById('mainContent').style.display= 'block';
+  // Esconde o hint "carregue um arquivo"
+  const hint = document.getElementById('tabsNoDataHint');
+  if (hint) hint.style.display = 'none';
+  renderHistoryBar();
+  populateSelects();
+}
+
+function populateSelects() {
+  ['dayFilter','tableDay'].forEach(id=>{
+    const sel=document.getElementById(id); const cur=sel.value;
+    sel.innerHTML='<option value="">Todos os dias</option>';
+    workDays.forEach(d=>sel.innerHTML+=`<option value="${d}" ${d===cur?'selected':''}>${fmtWD(d)}</option>`);
+  });
+  document.getElementById('loadCount').textContent = loads.length;
+}
+
+// ══════════════════════════════════════════════
+//  HISTORY BAR
+// ══════════════════════════════════════════════
+function renderHistoryBar() {
+  document.getElementById('loadCount').textContent = loads.length;
+  const list = document.getElementById('hbList');
+  if (!loads.length) { list.innerHTML='<div style="padding:14px;color:var(--text3);font-size:13px">Nenhum carregamento.</div>'; return; }
+  list.innerHTML = loads.map(l=>`
+    <div class="hb-item">
+      <div class="hb-dot"></div>
+      <div class="hb-date">${fmtWD(l.workDate)}</div>
+      <div class="hb-meta">${l.records.length} registros · ${l.loadedAtFmt}</div>
+      <div class="hb-file">${l.fileName}</div>
+      <button class="hb-del" onclick="confirmDelLoad('${l.id}')">✕</button>
+    </div>`).join('');
+}
+function toggleHbList() { document.getElementById('hbList').classList.toggle('open'); }
+
+// ══════════════════════════════════════════════
+//  RENDER ALL
+// ══════════════════════════════════════════════
+function renderAll() {
+  renderOverview();
+  renderVinculos();
+  renderDayView();
+  renderUserView();
+  renderLoadTimeline();
+  renderTable();
+}
+
+// ══════════════════════════════════════════════
+//  VISÃO GERAL
+// ══════════════════════════════════════════════
+function renderOverview() {
+  const daily   = allData.filter(r=>r.source==='daily').length;
+  const fixed   = allData.filter(r=>r.source==='fixed').length;
+  const empty   = allData.filter(r=>r.source==='empty').length;
+  const unique  = new Set(allData.map(r=>r.userId)).size;
+  const colabs  = new Set(allData.filter(r=>r.resolvedName).map(r=>r.resolvedName.toLowerCase())).size;
+
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card blue"><div class="sc-label">📅 Dias com Dados</div><div class="sc-value">${workDays.length}</div><div class="sc-sub">datas de trabalho</div></div>
+    <div class="stat-card purple"><div class="sc-label">🔑 Logins Únicos</div><div class="sc-value">${unique}</div><div class="sc-sub">helppi distintos</div></div>
+    <div class="stat-card orange"><div class="sc-label">🧑‍💼 Colaboradores</div><div class="sc-value">${colabs}</div><div class="sc-sub">nomes distintos</div></div>
+    <div class="stat-card green"><div class="sc-label">✅ Nome do Dia</div><div class="sc-value">${daily}</div><div class="sc-sub">preenchido na aba diária</div></div>
+    <div class="stat-card yellow"><div class="sc-label">⚠️ Vínculo Fixo</div><div class="sc-value">${fixed}</div><div class="sc-sub">buscado da aba USUARIOS</div></div>
+    <div class="stat-card red"><div class="sc-label">❌ Sem Nome</div><div class="sc-value">${empty}</div><div class="sc-sub">sem vínculo em nenhuma fonte</div></div>
+  `;
+
+  const body = document.getElementById('summaryBody');
+  body.innerHTML = '';
+  workDays.forEach(d => {
+    const recs = allData.filter(r=>r.workDate===d);
+    const dl   = recs.filter(r=>r.source==='daily').length;
+    const fx   = recs.filter(r=>r.source==='fixed').length;
+    const em   = recs.filter(r=>r.source==='empty').length;
+    const pct  = recs.length ? Math.round((dl+fx)/recs.length*100) : 0;
+    const ldAt = [...new Set(recs.map(r=>r.loadedAtFmt))].slice(0,1).join('');
+    body.innerHTML += `<tr>
+      <td><strong>${fmtWD(d)}</strong></td>
+      <td>${recs.length}</td>
+      <td><div style="display:flex;align-items:center;gap:8px">
+        <div class="prog-wrap"><div class="prog-bar" style="width:${pct}%"></div></div>
+        <span style="font-size:11px;color:var(--text2)">${pct}%</span>
+      </div></td>
+      <td><span class="badge badge-green">${dl}</span></td>
+      <td><span class="badge badge-yellow">${fx}</span></td>
+      <td><span class="badge badge-red">${em}</span></td>
+      <td style="color:var(--text3);font-size:11px">${ldAt}</td>
+    </tr>`;
+  });
+}
+
+// ══════════════════════════════════════════════
+//  VÍNCULOS — helppi ↔ colaborador
+// ══════════════════════════════════════════════
+function renderVinculos() {
+  const search = (document.getElementById('vincSearch').value||'').toLowerCase();
+  const srcF   = document.getElementById('vincSource').value;
+
+  // Build map per userId
+  const map = {};
+  // Seed all known helppi IDs from fixedMap
+  Object.keys(fixedMap).forEach(uid => {
+    if (!map[uid]) map[uid] = { userId:uid, fixedName:fixedMap[uid], dailyEntries:[], allDays:[], sources:new Set() };
+  });
+  // Overlay daily data
+  allData.forEach(r => {
+    if (!map[r.userId]) map[r.userId] = { userId:r.userId, fixedName:r.fixedName||fixedMap[r.userId]||'', dailyEntries:[], allDays:[], sources:new Set() };
+    map[r.userId].allDays.push(r.workDate);
+    map[r.userId].sources.add(r.source);
+    if (r.dailyName) map[r.userId].dailyEntries.push({ date:r.workDate, name:r.dailyName });
+    if (r.fixedName && !map[r.userId].fixedName) map[r.userId].fixedName = r.fixedName;
+  });
+
+  let cards = Object.values(map).sort((a,b)=>getNum(a.userId)-getNum(b.userId));
+
+  // Filter source
+  if (srcF==='daily') cards = cards.filter(c=>c.sources.has('daily'));
+  else if (srcF==='fixed') cards = cards.filter(c=>!c.sources.has('daily') && c.fixedName);
+  else if (srcF==='empty') cards = cards.filter(c=>!c.sources.has('daily') && !c.fixedName);
+
+  if (search) cards = cards.filter(c=>c.userId.includes(search)||c.fixedName.toLowerCase().includes(search)||c.dailyEntries.some(e=>e.name.toLowerCase().includes(search)));
+
+  const grid = document.getElementById('vincGrid');
+  if (!cards.length) { grid.innerHTML='<div class="empty-state"><div class="es-icon">🔍</div><h3>Sem resultados</h3></div>'; return; }
+
+  grid.innerHTML = '';
+  cards.forEach(c => {
+    const num = getNum(c.userId);
+    const color = avatarColor(num);
+    const ini   = getInit(c.fixedName || c.dailyEntries[0]?.name || '');
+    const label = c.userId.replace('2840669_','');
+
+    // Build day tags: show unique per-day usage
+    const sortedDays = [...new Set(c.allDays)].sort(cmpDates);
+    const dayTags = sortedDays.map(d => {
+      const entry = c.dailyEntries.find(e=>e.date===d);
+      const cls   = entry ? 'lc-day-daily' : (c.fixedName ? 'lc-day-fixed' : 'lc-day-fixed');
+      const tip   = entry ? entry.name : (c.fixedName || '—');
+      return `<span class="lc-day-tag ${cls}" title="${tip}">${fmtWD(d)}</span>`;
+    }).join('');
+
+    // Names summary
+    const dailyNamesUniq = [...new Set(c.dailyEntries.map(e=>e.name))].filter(Boolean);
+    const mainName = c.fixedName || dailyNamesUniq[0] || '(sem vínculo)';
+    const altNames = dailyNamesUniq.filter(n=>n.toLowerCase()!==mainName.toLowerCase());
+
+    grid.innerHTML += `
+      <div class="link-card">
+        <div class="lc-avatar" style="background:${color}">${ini}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+            <span class="lc-name">${mainName}</span>
+            ${c.fixedName?'<span class="lc-fixed-badge">fixo</span>':''}
+          </div>
+          <div class="lc-uid">${label}</div>
+          ${altNames.length?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Também: ${altNames.join(', ')}</div>`:''}
+          <div class="lc-days" style="margin-top:6px">${dayTags||'<span style="font-size:11px;color:var(--text3)">Sem uso registrado</span>'}</div>
+        </div>
+      </div>`;
+  });
+}
+
+// ══════════════════════════════════════════════
+//  POR DIA
+// ══════════════════════════════════════════════
+function renderDayView() {
+  const filter = document.getElementById('dayFilter').value;
+  const days   = filter ? workDays.filter(d=>d===filter) : workDays;
+  const grid   = document.getElementById('dayGrid');
+  if (!days.length) { grid.innerHTML='<div class="empty-state"><div class="es-icon">📭</div><h3>Sem dados</h3></div>'; return; }
+
+  grid.innerHTML = '';
+  days.forEach(d => {
+    const recs = allData.filter(r=>r.workDate===d).sort((a,b)=>getNum(a.userId)-getNum(b.userId));
+    const rows = recs.map(r => {
+      const label    = r.userId.replace('2840669_','');
+      const srcCls   = r.source;
+      const srcLbl   = r.source==='daily'?'dia':r.source==='fixed'?'fixo':'—';
+      const dispName = r.resolvedName
+        ? `<strong>${r.resolvedName}</strong>`
+        : '<span class="text-dim">sem nome</span>';
+      return `<div class="user-row">
+        <span class="ur-id">${label}</span>
+        <span class="ur-name">${dispName}</span>
+        <span class="ur-src ${srcCls}">${srcLbl}</span>
+      </div>`;
+    }).join('');
+
+    const daily = recs.filter(r=>r.source==='daily').length;
+    const fixed = recs.filter(r=>r.source==='fixed').length;
+    const empty = recs.filter(r=>r.source==='empty').length;
+
+    grid.innerHTML += `
+      <div class="day-card">
+        <div class="day-card-hdr">
+          <span class="dc-date">📅 ${fmtWD(d)}</span>
+          <span class="dc-count">${recs.length}</span>
+        </div>
+        <div style="display:flex;gap:6px;padding:8px 10px 0;font-size:10px">
+          <span class="badge badge-green">✅ ${daily}</span>
+          <span class="badge badge-yellow">⚠️ ${fixed}</span>
+          <span class="badge badge-red">❌ ${empty}</span>
+        </div>
+        <div class="day-card-body">${rows}</div>
+      </div>`;
+  });
+}
+
+// ══════════════════════════════════════════════
+//  POR COLABORADOR
+// ══════════════════════════════════════════════
+function renderUserView() {
+  const search = (document.getElementById('userSearch').value||'').toLowerCase();
+
+  // Group by resolvedName (lowercase)
+  const map = {};
+  allData.forEach(r => {
+    const key = r.resolvedName.toLowerCase() || `__empty_${r.userId}`;
+    if (!map[key]) map[key]={ name:r.resolvedName||'(sem nome)', logins:new Set(), days:[], sources:new Set() };
+    map[key].logins.add(r.userId);
+    map[key].days.push(r.workDate);
+    map[key].sources.add(r.source);
+  });
+
+  let colabs = Object.values(map).sort((a,b)=>a.name.localeCompare(b.name,'pt'));
+  if (search) colabs = colabs.filter(c=>c.name.toLowerCase().includes(search)||[...c.logins].some(l=>l.includes(search)));
+
+  const grid = document.getElementById('userGrid');
+  if (!colabs.length) { grid.innerHTML='<div class="empty-state"><div class="es-icon">🔍</div><h3>Sem resultados</h3></div>'; return; }
+
+  grid.innerHTML = '';
+  colabs.forEach(c => {
+    const ini   = getInit(c.name);
+    const nums  = [...c.logins].map(l=>getNum(l));
+    const color = avatarColor(nums[0]||0);
+    const loginLabels = [...c.logins].sort((a,b)=>getNum(a)-getNum(b)).map(l=>`<span class="badge badge-gray" style="font-family:monospace;font-size:10px">${l.replace('2840669_','')}</span>`).join(' ');
+    const sortedDays  = [...new Set(c.days)].sort(cmpDates);
+    const dayTags     = sortedDays.map(d=>`<span class="ud-day-tag">${fmtWD(d)}</span>`).join('');
+
+    grid.innerHTML += `
+      <div class="link-card">
+        <div class="lc-avatar" style="background:${color}">${ini}</div>
+        <div style="flex:1;min-width:0">
+          <div class="lc-name">${c.name}</div>
+          <div style="margin:4px 0;display:flex;flex-wrap:wrap;gap:3px">${loginLabels}</div>
+          <div class="lc-days">${dayTags}</div>
+        </div>
+      </div>`;
+  });
+}
+
+// ══════════════════════════════════════════════
+//  CARREGAMENTOS
+// ══════════════════════════════════════════════
+function renderLoadTimeline() {
+  const tl = document.getElementById('loadTimeline');
+  if (!loads.length) { tl.innerHTML='<div class="empty-state"><div class="es-icon">📭</div><h3>Nenhum carregamento</h3></div>'; return; }
+
+  const groups = {};
+  loads.forEach(l => { const k=l.loadedAt.slice(0,10); if(!groups[k])groups[k]=[]; groups[k].push(l); });
+
+  tl.innerHTML = '';
+  Object.entries(groups).sort(([a],[b])=>b.localeCompare(a)).forEach(([day, items]) => {
+    const dayFmt = new Date(day+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+    const total  = items.reduce((s,i)=>s+i.records.length,0);
+    tl.innerHTML += `<div class="lt-group-label">📆 Carregado em: ${dayFmt} — ${total} registros</div>`;
+    items.forEach(l => {
+      const rows = l.records.slice(0,6).map(r=>{
+        const resolved = r.dailyName || r.fixedName || fixedMap[r.userId] || '';
+        const src      = r.dailyName?'dia':resolved?'fixo':'—';
+        const srcCls   = r.dailyName?'daily':resolved?'fixed':'empty';
+        return `<div class="user-row">
+          <span class="ur-id">${r.userId.replace('2840669_','')}</span>
+          <span class="ur-name">${resolved||'<span class="text-dim">sem nome</span>'}</span>
+          <span class="ur-src ${srcCls}">${src}</span>
+        </div>`;
+      }).join('');
+      const more = l.records.length>6?`<div style="font-size:11px;color:var(--text3);padding:4px 6px">+${l.records.length-6} mais registros</div>`:'';
+      tl.innerHTML += `
+        <div class="lt-item">
+          <div class="lt-hdr" onclick="toggleLt(this)">
+            <div class="lt-dot"></div>
+            <div class="lt-title">📅 Trabalho: ${fmtWD(l.workDate)}</div>
+            <div class="lt-meta">${l.records.length} registros · ${l.fileName} · ${l.loadedAtFmt}</div>
+            <button class="btn btn-danger btn-sm" style="margin-left:10px;z-index:1" onclick="event.stopPropagation();confirmDelLoad('${l.id}')">🗑</button>
+            <span class="lt-chevron">▶</span>
+          </div>
+          <div class="lt-body">${rows}${more}</div>
+        </div>`;
+    });
+  });
+}
+function toggleLt(hdr) {
+  hdr.nextElementSibling.classList.toggle('open');
+  hdr.querySelector('.lt-chevron').classList.toggle('open');
+}
+
+// ══════════════════════════════════════════════
+//  TABELA COMPLETA
+// ══════════════════════════════════════════════
+function renderTable() {
+  const dayF    = document.getElementById('tableDay').value;
+  const srcF    = document.getElementById('tableSrc').value;
+  const search  = (document.getElementById('tableSearch').value||'').toLowerCase();
+
+  let filtered = allData.filter(r=>{
+    if (dayF && r.workDate!==dayF) return false;
+    if (srcF && r.source!==srcF)   return false;
+    if (search && !r.userId.includes(search) && !r.resolvedName.toLowerCase().includes(search) && !(r.fixedName||'').toLowerCase().includes(search)) return false;
+    return true;
+  });
+  filtered.sort((a,b)=>cmpDates(a.workDate,b.workDate)||getNum(a.userId)-getNum(b.userId));
+
+  const total=filtered.length, pages=Math.ceil(total/PAGE);
+  if (tablePage>=pages) tablePage=0;
+  const paged=filtered.slice(tablePage*PAGE,(tablePage+1)*PAGE);
+  const body=document.getElementById('tableBody');
+  body.innerHTML='';
+
+  if (!paged.length) { body.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text2)">Sem registros</td></tr>`; }
+  else paged.forEach(r=>{
+    const n=getNum(r.userId);
+    const cc=n<=12?'badge-blue':n<=24?'badge-green':n<=36?'badge-purple':'badge-yellow';
+    const srcBadge=r.source==='daily'?'<span class="badge badge-green">✅ Diário</span>':r.source==='fixed'?'<span class="badge badge-yellow">⚠️ Fixo</span>':'<span class="badge badge-red">❌ Vazio</span>';
+    body.innerHTML+=`<tr>
+      <td><strong>${fmtWD(r.workDate)}</strong></td>
+      <td><span class="badge ${cc}">${r.userId.replace('2840669_','')}</span></td>
+      <td>${r.dailyName||'<span class="text-dim">—</span>'}</td>
+      <td>${r.fixedName||fixedMap[r.userId]||'<span class="text-dim">—</span>'}</td>
+      <td>${srcBadge}</td>
+      <td style="color:var(--text3);font-size:11px">${r.loadedAtFmt}</td>
+    </tr>`;
+  });
+
+  const pg=document.getElementById('pagination');
+  if (pages<=1){pg.innerHTML=`<span>${total} registros</span>`;return;}
+  const s=Math.max(0,tablePage-2),e=Math.min(pages,tablePage+3);
+  let btns='';
+  if(s>0)btns+=`<button class="pg-btn" onclick="goPage(0)">1</button><span style="color:var(--text3);padding:0 4px">…</span>`;
+  for(let i=s;i<e;i++)btns+=`<button class="pg-btn ${i===tablePage?'active':''}" onclick="goPage(${i})">${i+1}</button>`;
+  if(e<pages)btns+=`<span style="color:var(--text3);padding:0 4px">…</span><button class="pg-btn" onclick="goPage(${pages-1})">${pages}</button>`;
+  pg.innerHTML=`<span>${total} registros · Pág ${tablePage+1}/${pages}</span><div class="pg-btns">
+    <button class="pg-btn" onclick="goPage(${tablePage-1})" ${tablePage===0?'disabled':''}>‹</button>${btns}
+    <button class="pg-btn" onclick="goPage(${tablePage+1})" ${tablePage===pages-1?'disabled':''}>›</button></div>`;
+}
+function goPage(p){tablePage=p;renderTable();}
+
+// ══════════════════════════════════════════════
+//  DELETE / CLEAR
+// ══════════════════════════════════════════════
+function confirmDelLoad(id) {
+  const l=loads.find(x=>x.id===id); if(!l)return;
+  openModal('Remover carregamento',`Remover dados de ${fmtWD(l.workDate)} (${l.loadedAtFmt})?\n${l.records.length} registros serão excluídos.`,()=>{
+    loads=loads.filter(x=>x.id!==id);
+    rebuildAllData(); populateSelects(); renderAll(); renderHistoryBar();
+    showSavePrompt();
+    showToast('🗑 Removido — clique em Salvar arquivo para persistir.','warning');
+  });
+}
+function confirmClearAll() {
+  openModal('Limpar tudo',`Apagar ${loads.length} carregamento(s) e todos os vínculos?\nEsta ação não pode ser desfeita.`,()=>{
+    loads=[]; fixedMap={};
+    allData=[]; workDays=[];
+    ['historyBar','tabsBar','mainContent'].forEach(id=>document.getElementById(id).style.display='none');
+    updateStorageBar();
+    showSavePrompt();
+    showToast('🗑 Dados removidos — clique em Salvar arquivo para aplicar.','warning');
+  });
+}
+
+// ══════════════════════════════════════════════
+//  BACKUP
+// ══════════════════════════════════════════════
+function exportBackup() {
+  const json=JSON.stringify({version:3,exportedAt:new Date().toISOString(),loads,fixedMap},null,2);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));
+  a.download=`helppi_backup_${todayISO().replace(/-/g,'')}.json`;
+  a.click();
+  showToast('✅ Backup exportado','success');
+}
+function doImport(e) {
+  const file=e.target.files[0]; if(!file)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try {
+      const d=JSON.parse(ev.target.result);
+      let added=0;
+      (d.loads||[]).forEach(l=>{ if(!loads.find(x=>x.id===l.id)){loads.push(l);added++;} });
+      Object.assign(fixedMap, d.fixedMap||{});
+      loads.sort((a,b)=>cmpDates(a.workDate,b.workDate)||new Date(a.loadedAt)-new Date(b.loadedAt));
+      rebuildAllData(); showDashboard(); renderAll();
+      showSavePrompt();
+      showToast(`✅ ${added} carregamento(s) importados — salve o arquivo!`,'success');
+    } catch(err){showToast('❌ JSON inválido','error');}
+    e.target.value='';
+  };
+  r.readAsText(file);
+}
+
+// ══════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════
+function norm(s){ return String(s||'').trim().toLowerCase(); }
+function genId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function getNum(uid){ const m=(uid||'').match(/helppi(\d+)/i); return m?parseInt(m[1]):0; }
+function getInit(name){
+  if(!name)return'?';
+  const p=name.trim().split(' ');
+  return(p.length>=2?p[0][0]+p[1][0]:p[0][0]||'?').toUpperCase();
+}
+function cmpDates(a,b){
+  const [da,ma]=a.split('-').map(Number),[db,mb]=b.split('-').map(Number);
+  return(ma-mb)||(da-db);
+}
+function fmtWD(d){
+  if(!d)return'—';
+  const[day,month]=d.split('-');
+  const M=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return`${day}/${month} (${M[parseInt(month)]})`;
+}
+function fmtDT(iso){
+  return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+const COLORS=['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444','#f97316','#06b6d4','#84cc16'];
+function avatarColor(n){ return COLORS[n%COLORS.length]; }
+
+// ══════════════════════════════════════════════
+//  MODAL & TOAST
+// ══════════════════════════════════════════════
+let modalCb=null;
+function openModal(title,msg,cb){
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalMsg').textContent=msg;
+  modalCb=cb;
+  document.getElementById('confirmModal').classList.add('open');
+  document.getElementById('modalConfirmBtn').onclick=()=>{closeModal();if(modalCb)modalCb();};
+}
+function closeModal(){ document.getElementById('confirmModal').classList.remove('open'); }
+document.getElementById('confirmModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+
+let toastT=null;
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className=`toast ${type} show`;
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+// ══════════════════════════════════════════════
+//  TABS
+// ══════════════════════════════════════════════
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.getAttribute('onclick').includes(`'${tab}'`)));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+tab).classList.add('active');
+  if(tab==='github') initGhPanel();
+}
+
+// ══════════════════════════════════════════════
+//  TABS
+// ══════════════════════════════════════════════
+function switchTab(tab) {
+  // Desativar todos os botões em ambas as barras
+  document.querySelectorAll('.tab-btn').forEach(b =>
+    b.classList.toggle('active', b.getAttribute('onclick').includes(`'${tab}'`))
+  );
+  // Mostrar painel correto
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('panel-'+tab);
+  if (panel) panel.classList.add('active');
+
+  // Painéis manual e github precisam que mainContent esteja visível
+  if (tab === 'manual' || tab === 'github') {
+    document.getElementById('mainContent').style.display = 'block';
+  }
+
+  if (tab === 'github') initGhPanel();
+  if (tab === 'manual') initManualPanel();
+}
+
+// ══════════════════════════════════════════════
+//  LANÇAMENTO MANUAL
+// ══════════════════════════════════════════════
+// knownUsers: [{uid, fixedName}] — lista de helppiXX conhecidos
+// manRows em edição: [{uid, dailyName}]
+
+let manEditRows = []; // linhas em edição no formulário atual
+
+// ── Init ────────────────────────────────────────────────────────
+function initManualPanel() {
+  document.getElementById('manDate').value = todayISO();
+  manDateChanged();
+  renderKnownUsers();
+  renderManSavedList();
+  updateCollabSuggestions();
+}
+
+// ── Quando muda a data — avisa se já existe lançamento ──────────
+function manDateChanged() {
+  const d    = isoToWorkDate(document.getElementById('manDate').value);
+  const info = document.getElementById('manDateInfo');
+  if (!d) { info.style.display='none'; return; }
+  const exists = loads.some(l => l.workDate === d);
+  info.style.display = exists ? 'block' : 'none';
+}
+
+// ── Converte YYYY-MM-DD → DD-MM ─────────────────────────────────
+function isoToWorkDate(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  return `${d}-${m}`;
+}
+
+// ── Botão "Adicionar usuários helppi para esta data" ─────────────
+function addManualUsers() {
+  const dateISO = document.getElementById('manDate').value;
+  if (!dateISO) { showToast('⚠️ Escolha a data de trabalho.','warning'); return; }
+  const workDate = isoToWorkDate(dateISO);
+
+  // Pegar usuários conhecidos do fixedMap + loads anteriores
+  const knownUids = getKnownUids();
+
+  if (!knownUids.length) {
+    // Sem base de usuários — adiciona linhas em branco para digitação
+    manEditRows = [{ uid:'', dailyName:'' }, { uid:'', dailyName:'' }, { uid:'', dailyName:'' }];
+    showToast('💡 Nenhum helppi cadastrado ainda. Digite os IDs manualmente.','warning');
+  } else {
+    // Pré-popula com todos os helppi conhecidos, já com nome do dia se existir
+    const existing = loads.filter(l=>l.workDate===workDate).flatMap(l=>l.records);
+    manEditRows = knownUids.map(uid => {
+      const exRec = existing.find(r=>r.userId===uid);
+      return { uid, dailyName: exRec?.dailyName||'' };
+    });
+  }
+
+  renderManForm(workDate);
+}
+
+// ── Retorna lista ordenada de UIDs conhecidos ────────────────────
+function getKnownUids() {
+  const s = new Set();
+  // Da fixedMap
+  Object.keys(fixedMap).forEach(u => s.add(u));
+  // Dos loads anteriores
+  loads.forEach(l => l.records.forEach(r => s.add(r.userId)));
+  return [...s].sort((a,b)=>getNum(a)-getNum(b));
+}
+
+// ── Renderiza o formulário de edição ────────────────────────────
+function renderManForm(workDate) {
+  document.getElementById('manFormTitle').textContent    = `✏️ Lançamento — ${fmtWD(workDate)}`;
+  document.getElementById('manFormSubtitle').textContent = `${manEditRows.length} usuários · preencha o colaborador de cada um`;
+  document.getElementById('manEmptyState').style.display  = 'none';
+  document.getElementById('manTableWrap').style.display   = 'block';
+  document.getElementById('manQuickFill').style.display   = 'block';
+  document.getElementById('btnAddRow').style.display      = 'inline-block';
+  document.getElementById('btnSaveManual').style.display  = 'inline-block';
+  updateCollabSuggestions();
+
+  const container = document.getElementById('manRows');
+  container.innerHTML = '';
+  manEditRows.forEach((row, i) => {
+    const fixedName = fixedMap[row.uid] || '';
+    container.innerHTML += `
+      <div class="man-row" id="manrow-${i}">
+        <input type="checkbox" onchange="toggleManRowSel(${i},this)" title="Selecionar">
+        <input class="man-uid gh-input" style="font-family:monospace;font-size:11px;padding:5px 7px"
+               value="${escHtml(row.uid)}" placeholder="helppiXX"
+               oninput="manEditRows[${i}].uid=this.value.trim().toLowerCase();updateManRowFixed(${i})"
+               list="helppiSuggestions">
+        <input class="man-name-input ${row.dailyName?'filled':''}" id="mni-${i}"
+               value="${escHtml(row.dailyName)}" placeholder="Nome do colaborador..."
+               oninput="manEditRows[${i}].dailyName=this.value;this.classList.toggle('filled',!!this.value)"
+               list="collabSuggestions">
+        <div class="man-fixed" id="manfixed-${i}" title="${escHtml(fixedName)}">${fixedName||'<span style="color:var(--text3)">—</span>'}</div>
+        <button class="man-del" onclick="removeManRow(${i})" title="Remover linha">✕</button>
+      </div>`;
+  });
+
+  // Datalist com helppi sugeridos
+  const dl = document.getElementById('helppiSuggestions') || (() => {
+    const el = document.createElement('datalist'); el.id='helppiSuggestions'; document.body.appendChild(el); return el;
+  })();
+  dl.innerHTML = getKnownUids().map(u=>`<option value="${u}">${fixedMap[u]?u+' — '+fixedMap[u]:u}</option>`).join('');
+}
+
+function updateManRowFixed(i) {
+  const uid = manEditRows[i].uid;
+  const fn  = fixedMap[uid] || '';
+  const el  = document.getElementById(`manfixed-${i}`);
+  if (el) el.innerHTML = fn || '<span style="color:var(--text3)">—</span>';
+}
+
+function toggleManRowSel(i, cb) {
+  document.getElementById(`manrow-${i}`).classList.toggle('selected', cb.checked);
+}
+
+function removeManRow(i) {
+  manEditRows.splice(i, 1);
+  const workDate = isoToWorkDate(document.getElementById('manDate').value);
+  renderManForm(workDate);
+}
+
+function addManRow() {
+  manEditRows.push({ uid:'', dailyName:'' });
+  const workDate = isoToWorkDate(document.getElementById('manDate').value);
+  renderManForm(workDate);
+  // Scroll para última linha e foca
+  setTimeout(() => {
+    const rows = document.querySelectorAll('.man-row');
+    rows[rows.length-1]?.scrollIntoView({behavior:'smooth',block:'nearest'});
+    document.getElementById(`mni-${manEditRows.length-1}`)?.focus();
+  }, 50);
+}
+
+// ── Preenchimento rápido ────────────────────────────────────────
+function applyQuickFill(mode) {
+  const name = document.getElementById('quickFillName').value.trim();
+  if (!name) { showToast('⚠️ Digite o nome do colaborador primeiro.','warning'); return; }
+
+  manEditRows.forEach((row, i) => {
+    const el  = document.getElementById(`mni-${i}`);
+    const cb  = document.querySelector(`#manrow-${i} input[type=checkbox]`);
+    const sel = cb?.checked;
+
+    const shouldFill =
+      mode==='all'      ? true :
+      mode==='selected' ? sel :
+      mode==='empty'    ? !row.dailyName : false;
+
+    if (shouldFill) {
+      row.dailyName = name;
+      if (el) { el.value=name; el.classList.add('filled'); }
+    }
+  });
+  showToast(`✅ "${name}" aplicado (${mode==='all'?'todos':mode==='selected'?'selecionados':'vazios'})`, 'success');
+}
+
+// ── Salvar lançamento ────────────────────────────────────────────
+function saveManual() {
+  const dateISO  = document.getElementById('manDate').value;
+  const fileName = document.getElementById('manFileName').value.trim() || 'lançamento-manual';
+  if (!dateISO) { showToast('⚠️ Escolha a data.','warning'); return; }
+
+  const workDate = isoToWorkDate(dateISO);
+  const records  = manEditRows
+    .filter(r => r.uid && r.uid.includes('helppi'))
+    .map(r => ({
+      userId:    r.uid,
+      dailyName: r.dailyName.trim(),
+      fixedName: fixedMap[r.uid] || ''
+    }));
+
+  if (!records.length) { showToast('⚠️ Nenhum usuário helppi válido nas linhas.','warning'); return; }
+
+  // Atualizar fixedMap com nomes preenchidos como fixo (apenas se não há fixo anterior)
+  records.forEach(r => {
+    if (r.dailyName && !fixedMap[r.userId]) fixedMap[r.userId] = r.dailyName;
+  });
+
+  const now   = new Date();
+  const loadedAt    = now.toISOString();
+  const loadedAtFmt = fmtDT(loadedAt);
+
+  // Substituir lançamento manual existente do mesmo dia+fileName, ou adicionar
+  const idx = loads.findIndex(l=>l.workDate===workDate && l.fileName===fileName);
+  const entry = { id: idx>=0?loads[idx].id:genId(), workDate, loadedAt, loadedAtFmt, fileName, records };
+  if (idx>=0) loads[idx]=entry; else loads.push(entry);
+
+  loads.sort((a,b)=>cmpDates(a.workDate,b.workDate)||new Date(a.loadedAt)-new Date(b.loadedAt));
+  rebuildAllData();
+  showDashboard();
+  renderAll();
+  renderManSavedList();
+  showSavePrompt();
+
+  // Reset form
+  manEditRows = [];
+  document.getElementById('manEmptyState').style.display  = 'block';
+  document.getElementById('manTableWrap').style.display   = 'none';
+  document.getElementById('manQuickFill').style.display   = 'none';
+  document.getElementById('btnAddRow').style.display      = 'none';
+  document.getElementById('btnSaveManual').style.display  = 'none';
+  document.getElementById('manFormTitle').textContent     = '✏️ Lançamento do dia';
+  document.getElementById('manFormSubtitle').textContent  = 'Configure a data e clique em "Adicionar usuários helppi"';
+
+  showToast(`✅ ${records.length} vínculos salvos para ${fmtWD(workDate)}!`, 'success');
+}
+
+// ── Lançamentos manuais salvos ────────────────────────────────────
+function renderManSavedList() {
+  const manLoads = loads.filter(l=>l.fileName&&l.fileName.includes('manual')||false).concat(
+    loads.filter(l=>l.fileName&&!l.fileName.match(/\.(xlsx|xls)$/i))
+  );
+  // Deduplicate
+  const seen=new Set(); const uniq=[];
+  loads.filter(l=>!l.fileName?.match(/\.(xlsx|xls)$/i)).forEach(l=>{ if(!seen.has(l.id)){seen.add(l.id);uniq.push(l);} });
+
+  const box  = document.getElementById('manSavedBox');
+  const list = document.getElementById('manSavedList');
+  if (!uniq.length) { box.style.display='none'; return; }
+  box.style.display='block';
+  list.innerHTML = uniq.map(l=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:12px">
+      <span style="color:var(--success)">✓</span>
+      <strong>${fmtWD(l.workDate)}</strong>
+      <span style="color:var(--text3)">·</span>
+      <span>${l.records.length} usuários</span>
+      <span style="color:var(--text3)">·</span>
+      <span style="color:var(--text3)">${l.fileName}</span>
+      <span style="color:var(--text3)">·</span>
+      <span style="color:var(--text3)">${l.loadedAtFmt}</span>
+      <button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="editManLoad('${l.id}')">✏️ Editar</button>
+      <button class="hb-del" onclick="confirmDelLoad('${l.id}')">✕</button>
+    </div>`).join('');
+}
+
+function editManLoad(id) {
+  const load = loads.find(l=>l.id===id); if(!load)return;
+  // Restaurar no formulário de edição
+  const [d,m] = load.workDate.split('-');
+  const year  = new Date().getFullYear();
+  document.getElementById('manDate').value     = `${year}-${m}-${d}`;
+  document.getElementById('manFileName').value = load.fileName;
+  manEditRows = load.records.map(r=>({uid:r.userId, dailyName:r.dailyName||''}));
+  renderManForm(load.workDate);
+  showToast(`✏️ Editando lançamento de ${fmtWD(load.workDate)}`, 'success');
+  document.getElementById('manRows').scrollIntoView({behavior:'smooth'});
+}
+
+// ── Usuários conhecidos ──────────────────────────────────────────
+function renderKnownUsers() {
+  const uids = getKnownUids();
+  const list = document.getElementById('knownUsersList');
+  if (!uids.length) {
+    list.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:16px">Carregue um arquivo Excel ou adicione manualmente acima</div>';
+    return;
+  }
+  list.innerHTML = uids.map(uid=>`
+    <div class="known-item" id="ki-${uid.replace(/\W/g,'_')}">
+      <input type="checkbox" checked style="accent-color:var(--accent);flex-shrink:0" id="kc-${uid.replace(/\W/g,'_')}">
+      <span class="known-id">${uid.replace('2840669_','')}</span>
+      <span class="known-name">${fixedMap[uid]||'<span style="color:var(--text3)">sem vínculo</span>'}</span>
+      <button class="known-del" onclick="removeKnownUser('${uid}')" title="Remover">✕</button>
+    </div>`).join('');
+}
+
+function addKnownUser() {
+  let uid  = document.getElementById('newHelppiId').value.trim().toLowerCase();
+  const name = document.getElementById('newHelppiName').value.trim();
+  if (!uid) { showToast('⚠️ Digite o ID helppi.','warning'); return; }
+  if (!uid.includes('helppi')) uid = 'helppi'+uid; // auto-completar se digitou só número
+  if (!uid.startsWith('2840669_')) uid = '2840669_'+uid.replace(/^2840669_/,'');
+  if (name) fixedMap[uid] = name;
+  else if (!fixedMap[uid]) fixedMap[uid]=''; // garante que aparece na lista
+  // Forçar existência sem fixedMap usando um load vazio só para manter no knownUsers
+  if (!fixedMap[uid] && !getKnownUids().includes(uid)) {
+    // Adiciona no fixedMap com string vazia para aparecer na lista
+    fixedMap[uid] = name;
+  }
+  document.getElementById('newHelppiId').value   = '';
+  document.getElementById('newHelppiName').value = '';
+  renderKnownUsers();
+  showSavePrompt();
+  showToast(`✅ ${uid.replace('2840669_','')} adicionado`, 'success');
+}
+
+function removeKnownUser(uid) {
+  // Remove do fixedMap mas não dos loads já salvos
+  delete fixedMap[uid];
+  renderKnownUsers();
+  showSavePrompt();
+}
+
+function selectAllKnown() {
+  document.querySelectorAll('[id^="kc-"]').forEach(cb=>cb.checked=true);
+}
+function selectNoneKnown() {
+  document.querySelectorAll('[id^="kc-"]').forEach(cb=>cb.checked=false);
+}
+
+function updateCollabSuggestions() {
+  const dl = document.getElementById('collabSuggestions');
+  if (!dl) return;
+  const names = new Set([
+    ...Object.values(fixedMap).filter(Boolean),
+    ...allData.map(r=>r.resolvedName).filter(Boolean)
+  ]);
+  dl.innerHTML = [...names].sort().map(n=>`<option value="${n}">`).join('');
+}
+
+function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+
+const GH_CONFIG_KEY = 'helppi_gh_config';
+const GH_PUB_KEY    = 'helppi_gh_pubs';
+
+function getGhConfig(){
+  try { return JSON.parse(localStorage.getItem(GH_CONFIG_KEY)||'{}'); } catch(e){ return {}; }
+}
+function saveGhConfig(){
+  const cfg = {
+    user:  document.getElementById('ghUser').value.trim(),
+    repo:  document.getElementById('ghRepo').value.trim(),
+    token: document.getElementById('ghToken').value.trim()
+  };
+  localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(cfg));
+  updateGhLink(cfg);
+}
+function loadGhConfig(){
+  const cfg = getGhConfig();
+  if(cfg.user)  document.getElementById('ghUser').value  = cfg.user;
+  if(cfg.repo)  document.getElementById('ghRepo').value  = cfg.repo;
+  if(cfg.token) document.getElementById('ghToken').value = cfg.token;
+  updateGhLink(cfg);
+}
+function updateGhLink(cfg){
+  if(cfg.user && cfg.repo){
+    const url = `https://${cfg.user}.github.io/${cfg.repo}/`;
+    const box = document.getElementById('ghLinkBox');
+    const link = document.getElementById('ghLinkUrl');
+    box.style.display='block';
+    link.textContent = url;
+    link.href = url;
+  }
+}
+function toggleTokenVis(){
+  const inp = document.getElementById('ghToken');
+  inp.type = inp.type==='password' ? 'text' : 'password';
+  document.getElementById('tokenEye').textContent = inp.type==='password' ? '👁' : '🙈';
+}
+function copyLink(){
+  const url = document.getElementById('ghLinkUrl').textContent;
+  navigator.clipboard.writeText(url).then(()=>showToast('📋 Link copiado!','success'));
+}
+
+function initGhPanel(){ loadGhConfig(); renderPubHistory(); }
+
+// ── Testar conexão ──────────────────────────────────────────────
+async function testGhConnection(){
+  const cfg = getGhConfig();
+  const {user,repo,token} = cfg;
+  if(!user||!repo||!token){ ghStatus('⚠️ Preencha usuário, repositório e token.','warning'); return; }
+
+  const btn = document.getElementById('btnTest');
+  btn.innerHTML = '<span class="gh-spin">⏳</span> Testando...';
+  btn.disabled = true;
+  setGhConnStatus('Conectando ao GitHub...','var(--text3)');
+
+  try {
+    const res = await fetch(`https://api.github.com/repos/${user}/${repo}`, {
+      headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' }
+    });
+    if(res.status===200){
+      const data = await res.json();
+      setGhConnStatus(`✅ Conectado! Repositório: "${data.full_name}" · ${data.private?'🔒 Privado':'🌐 Público'}`, 'var(--success)');
+      ghStatus(`✅ Conexão bem-sucedida com <strong>${data.full_name}</strong>. Pronto para publicar!`, 'success');
+      // Verificar se Pages está ativo
+      const pagesRes = await fetch(`https://api.github.com/repos/${user}/${repo}/pages`, {
+        headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' }
+      });
+      if(pagesRes.status===200){
+        const pagesData = await pagesRes.json();
+        ghStatus(`✅ GitHub Pages ativo! Seu link: <a href="${pagesData.html_url}" target="_blank" style="color:#93c5fd">${pagesData.html_url}</a>`, 'success');
+      } else {
+        ghStatus(`✅ Repositório OK. GitHub Pages ainda não ativo — siga o passo 4.`, 'warning');
+      }
+    } else if(res.status===401){
+      setGhConnStatus('❌ Token inválido ou expirado.','var(--danger)');
+      ghStatus('❌ Token inválido. Verifique se copiou corretamente (começa com ghp_).','error');
+    } else if(res.status===404){
+      setGhConnStatus('❌ Repositório não encontrado. Verifique usuário e nome.','var(--danger)');
+      ghStatus('❌ Repositório não encontrado. Confirme o usuário e nome do repositório.','error');
+    } else {
+      ghStatus(`❌ Erro ${res.status}. Tente novamente.`,'error');
+    }
+  } catch(e){
+    ghStatus('❌ Sem conexão com a internet ou CORS bloqueado.','error');
+  }
+
+  btn.innerHTML = '🔌 Testar conexão';
+  btn.disabled = false;
+}
+
+// ── Publicar no GitHub ──────────────────────────────────────────
+async function publishToGh(){
+  const cfg = getGhConfig();
+  const {user,repo,token} = cfg;
+  if(!user||!repo||!token){ ghStatus('⚠️ Configure usuário, repositório e token antes de publicar.','warning'); return; }
+
+  const btn = document.getElementById('btnPublish');
+  btn.innerHTML = '<span class="gh-spin">⏳</span> Publicando...';
+  btn.disabled = true;
+  ghStatus('⏳ Preparando publicação...','info');
+
+  try {
+    // Monta o HTML com os dados embutidos atualizados
+    const payload  = JSON.stringify({ loads, fixedMap });
+    const html     = document.documentElement.outerHTML;
+    const updated  = html.replace(
+      /(<script\s+id="embedded-data"[^>]*>)([\s\S]*?)(<\/script>)/,
+      (_, o, _c, cl) => `${o}\n${payload}\n${cl}`
+    );
+
+    const content  = btoa(unescape(encodeURIComponent(updated))); // base64 UTF-8
+    const filePath = 'index.html';
+    const apiBase  = `https://api.github.com/repos/${user}/${repo}/contents/${filePath}`;
+    const headers  = { Authorization:`token ${token}`, Accept:'application/vnd.github.v3+json', 'Content-Type':'application/json' };
+
+    // Verificar se o arquivo já existe para pegar o SHA
+    let sha = null;
+    const getRes = await fetch(apiBase, { headers });
+    if(getRes.status===200){ const d=await getRes.json(); sha=d.sha; }
+
+    const body = {
+      message: `📊 Helppi dashboard — ${new Date().toLocaleString('pt-BR')}`,
+      content,
+      ...(sha ? {sha} : {})
+    };
+
+    const putRes = await fetch(apiBase, { method:'PUT', headers, body:JSON.stringify(body) });
+
+    if(putRes.status===200||putRes.status===201){
+      const pageUrl = `https://${user}.github.io/${repo}/`;
+
+      // Salvar histórico de publicações
+      const pubs = JSON.parse(localStorage.getItem(GH_PUB_KEY)||'[]');
+      pubs.unshift({ at: new Date().toISOString(), atFmt: fmtDT(new Date().toISOString()), loads: loads.length, url: pageUrl });
+      if(pubs.length>20) pubs.length=20;
+      localStorage.setItem(GH_PUB_KEY, JSON.stringify(pubs));
+
+      // Atualizar UI
+      const box  = document.getElementById('ghLinkBox');
+      const link = document.getElementById('ghLinkUrl');
+      box.style.display='block'; link.textContent=pageUrl; link.href=pageUrl;
+      renderPubHistory();
+
+      ghStatus(`🚀 Publicado com sucesso! Link: <a href="${pageUrl}" target="_blank" style="color:#93c5fd">${pageUrl}</a> <span style="color:var(--text3)">(pode levar ~1 minuto para atualizar)</span>`,'success');
+      showToast('🚀 Dashboard publicado no GitHub!','success');
+    } else {
+      const err = await putRes.json().catch(()=>({}));
+      ghStatus(`❌ Erro ao publicar: ${err.message||putRes.status}`,'error');
+    }
+  } catch(e){
+    ghStatus('❌ Falha na publicação. Verifique sua conexão e tente novamente.','error');
+  }
+
+  btn.innerHTML = '🚀 Publicar dashboard';
+  btn.disabled = false;
+}
+
+// ── UI helpers GitHub ───────────────────────────────────────────
+function ghStatus(msg, type){
+  const bar = document.getElementById('ghStatusBar');
+  const colors = { success:['#1c3a2a','var(--success)'], warning:['#2d2a15','var(--warning)'], error:['#2d1515','var(--danger)'], info:['#1a2540','var(--accent)'] };
+  const [bg,border] = colors[type]||colors.info;
+  bar.style.cssText = `display:flex;align-items:center;gap:10px;padding:12px 18px;border-radius:12px;border:1px solid ${border};background:${bg};font-size:13px;margin-bottom:18px`;
+  bar.innerHTML = msg;
+}
+function setGhConnStatus(msg, color){
+  const el = document.getElementById('ghConnStatus');
+  el.innerHTML=msg; el.style.color=color;
+}
+function renderPubHistory(){
+  const pubs = JSON.parse(localStorage.getItem(GH_PUB_KEY)||'[]');
+  const box  = document.getElementById('ghPubHistory');
+  const list = document.getElementById('ghPubList');
+  if(!pubs.length){ box.style.display='none'; return; }
+  box.style.display='block';
+  list.innerHTML = pubs.map(p=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+      <span style="color:var(--success)">✓</span>
+      <span>${p.atFmt}</span>
+      <span style="color:var(--text3)">·</span>
+      <span>${p.loads} carregamento(s)</span>
+      <a href="${p.url}" target="_blank" style="color:var(--accent);margin-left:auto;font-size:10px">abrir →</a>
+    </div>`).join('');
+}
+</script>
+</body>
+</html>
